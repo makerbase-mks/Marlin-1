@@ -265,5 +265,3 @@
 #define MESSEGE_OPTION_T_CN             "擠出更多還是繼續打印"
 #define MESSEGE_PURGE_MORE_T_CN         "擠出"
 #define MESSEGE_CONTINUE_PRINT_T_CN     "打印"
-
-#endif
