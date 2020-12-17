@@ -19,24 +19,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#pragma once
+#ifdef TARGET_LPC1768
 
-/**
- * Test TEENSY41 specific configuration values for errors at compile-time.
- */
-
-#if ENABLED(EMERGENCY_PARSER)
-  #error "EMERGENCY_PARSER is not yet implemented for Teensy 4.0/4.1. Disable EMERGENCY_PARSER to continue."
-#endif
-
-#if ENABLED(FAST_PWM_FAN) || SPINDLE_LASER_FREQUENCY
-  #error "Features requiring Hardware PWM (FAST_PWM_FAN, SPINDLE_LASER_FREQUENCY) are not yet supported on Teensy 4.0/4.1."
-#endif
-
-#if HAS_TMC_SW_SERIAL
-  #error "TMC220x Software Serial is not supported on Teensy 4.0/4.1."
-#endif
+#include "HAL.h"
 
 #if ENABLED(POST_MORTEM_DEBUGGING)
-  #error "POST_MORTEM_DEBUGGING is not yet supported on Teensy 4.0/4.1."
-#endif
+
+#include "../shared/HAL_MinSerial.h"
+#include <debug_frmwrk.h>
+
+static void TX(char c) { _DBC(c); }
+void install_min_serial() { HAL_min_serial_out = &TX; }
+
+#endif // POST_MORTEM_DEBUGGING
+#endif // TARGET_LPC1768

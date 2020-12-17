@@ -34,5 +34,9 @@
 #endif
 
 #if HAS_TMC_SW_SERIAL
-  #error "TMC220x Software Serial is not supported on this platform."
+  #error "TMC220x Software Serial is not supported on Teensy 3.1/3.2."
+#endif
+
+#if ENABLED(POST_MORTEM_DEBUGGING)
+  #error "POST_MORTEM_DEBUGGING is not yet supported on Teensy 3.1/3.2."
 #endif

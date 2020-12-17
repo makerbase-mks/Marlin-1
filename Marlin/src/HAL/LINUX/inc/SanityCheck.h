@@ -35,5 +35,9 @@
 #endif
 
 #if HAS_TMC_SW_SERIAL
-  #error "TMC220x Software Serial is not supported on this platform."
+  #error "TMC220x Software Serial is not supported on LINUX."
+#endif
+
+#if ENABLED(POST_MORTEM_DEBUGGING)
+  #error "POST_MORTEM_DEBUGGING is not yet supported on LINUX."
 #endif

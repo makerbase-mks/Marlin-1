@@ -36,6 +36,7 @@
 
 #include "HAL/shared/Delay.h"
 #include "HAL/shared/esp_wifi.h"
+#include "HAL/shared/cpu_exception/exception_hook.h"
 
 #ifdef ARDUINO
   #include <pins_arduino.h>
@@ -1331,6 +1332,8 @@ void setup() {
   #if BOTH(HAS_LCD_MENU, TOUCH_SCREEN_CALIBRATION) && EITHER(TFT_CLASSIC_UI, TFT_COLOR_UI)
     ui.check_touch_calibration();
   #endif
+
+  TERN_(POST_MORTEM_DEBUGGING, hook_cpu_exceptions()); // If supported, install Marlin exception handlers
 
   marlin_state = MF_RUNNING;
 

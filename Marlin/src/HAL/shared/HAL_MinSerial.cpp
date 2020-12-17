@@ -19,24 +19,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#pragma once
-
-/**
- * Test TEENSY41 specific configuration values for errors at compile-time.
- */
-
-#if ENABLED(EMERGENCY_PARSER)
-  #error "EMERGENCY_PARSER is not yet implemented for Teensy 4.0/4.1. Disable EMERGENCY_PARSER to continue."
-#endif
-
-#if ENABLED(FAST_PWM_FAN) || SPINDLE_LASER_FREQUENCY
-  #error "Features requiring Hardware PWM (FAST_PWM_FAN, SPINDLE_LASER_FREQUENCY) are not yet supported on Teensy 4.0/4.1."
-#endif
-
-#if HAS_TMC_SW_SERIAL
-  #error "TMC220x Software Serial is not supported on Teensy 4.0/4.1."
-#endif
+#include "HAL_MinSerial.h"
 
 #if ENABLED(POST_MORTEM_DEBUGGING)
-  #error "POST_MORTEM_DEBUGGING is not yet supported on Teensy 4.0/4.1."
+
+void HAL_min_serial_init_default() {}
+void HAL_min_serial_out_default(char ch) { SERIAL_CHAR(ch); }
+void (*HAL_min_serial_init)() = &HAL_min_serial_init_default;
+void (*HAL_min_serial_out)(char) = &HAL_min_serial_out_default;
+
+bool MinSerial::force_using_default_output = false;
+
 #endif

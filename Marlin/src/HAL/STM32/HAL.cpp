@@ -59,6 +59,8 @@ uint16_t HAL_adc_result;
   }
 #endif
 
+TERN_(POST_MORTEM_DEBUGGING, extern void install_min_serial());
+
 // HAL initialization task
 void HAL_init() {
   FastIO_init();
@@ -84,6 +86,8 @@ void HAL_init() {
   #if ENABLED(EMERGENCY_PARSER) && USBD_USE_CDC
     USB_Hook_init();
   #endif
+
+  TERN_(POST_MORTEM_DEBUGGING, install_min_serial()); // Install the min serial handler
 }
 
 void HAL_clear_reset_source() { __HAL_RCC_CLEAR_RESET_FLAGS(); }

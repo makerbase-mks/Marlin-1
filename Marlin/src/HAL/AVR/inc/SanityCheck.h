@@ -56,3 +56,10 @@
 #if BOTH(HAS_TMC_SW_SERIAL, MONITOR_DRIVER_STATUS)
   #error "MONITOR_DRIVER_STATUS causes performance issues when used with SoftwareSerial-connected drivers. Disable MONITOR_DRIVER_STATUS or use hardware serial to continue."
 #endif
+
+/**
+ * Post mortem debugging
+ */
+#if ENABLED(POST_MORTEM_DEBUGGING)
+  #error "POST_MORTEM_DEBUGGING is not supported on AVR boards."
+#endif

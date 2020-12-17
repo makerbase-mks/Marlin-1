@@ -30,9 +30,13 @@
 #endif
 
 #if HAS_TMC_SW_SERIAL
-  #error "TMC220x Software Serial is not supported on this platform."
+  #error "TMC220x Software Serial is not supported on ESP32."
 #endif
 
 #if BOTH(WIFISUPPORT, ESP3D_WIFISUPPORT)
   #error "Only enable one WiFi option, either WIFISUPPORT or ESP3D_WIFISUPPORT."
+#endif
+
+#if ENABLED(POST_MORTEM_DEBUGGING)
+  #error "POST_MORTEM_DEBUGGING is not yet supported on ESP32."
 #endif
