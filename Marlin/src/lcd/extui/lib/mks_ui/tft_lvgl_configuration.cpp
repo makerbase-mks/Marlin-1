@@ -19,6 +19,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+
+/**
+ * @file tft_lvgl_configuration.cpp
+ * @date    2020-02-21
+ */
+
 #include "../../../../inc/MarlinConfigPre.h"
 
 #if HAS_TFT_LVGL_UI
@@ -77,6 +83,8 @@ extern uint8_t sel_id;
 
 extern bool flash_preview_begin, default_preview_flg, gcode_preview_over;
 
+uint8_t bmp_public_buf[14 * 1024];
+
 void SysTick_Callback() {
   lv_tick_inc(1);
   print_time_count();
@@ -105,6 +113,7 @@ void SysTick_Callback() {
   }
 }
 
+
 void tft_lvgl_init() {
 
   W25QXX.init(SPI_QUARTER_SPEED);
@@ -115,15 +124,12 @@ void tft_lvgl_init() {
 
   watchdog_refresh();     // LVGL init takes time
 
-  #if MB(MKS_ROBIN_NANO)
-    OUT_WRITE(PB0, LOW);  // HE1
-  #endif
-
   // Init TFT first!
   SPI_TFT.spi_init(SPI_FULL_SPEED);
   SPI_TFT.LCD_init();
 
   watchdog_refresh();     // LVGL init takes time
+
 
   #if ENABLED(SDSUPPORT)
     UpdateAssets();
@@ -215,9 +221,7 @@ void tft_lvgl_init() {
   #endif
 
   if (ready) {
-    const bool need_cal = TERN0(TOUCH_SCREEN_CALIBRATION, touch_calibration.need_calibration());
-    TERN_(TOUCH_SCREEN_CALIBRATION, if (need_cal) lv_draw_touch_calibration_screen());
-    if (!need_cal) lv_draw_ready_print();
+    lv_draw_ready_print();
   }
 
   if (mks_test_flag == 0x1E)
@@ -295,7 +299,7 @@ bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data) {
 
   tmpTime = millis();
   diffTime = getTickDiff(tmpTime, touch_time1);
-  if (diffTime > 20) {
+   if (diffTime > 20) {
     if (get_point(&last_x, &last_y)) {
 
       if (last_touch_state == LV_INDEV_STATE_PR) return false;
@@ -395,6 +399,7 @@ lv_fs_res_t sd_open_cb (lv_fs_drv_t * drv, void * file_p, const char * path, lv_
   if (temp) strcpy(temp, ".GCO");
   sd_read_base_addr = lv_open_gcode_file((char *)name_buf);
   sd_read_addr_offset = sd_read_base_addr;
+  if (sd_read_addr_offset == 0) return LV_FS_RES_NOT_EX;
   return LV_FS_RES_OK;
 }
 
@@ -499,7 +504,7 @@ void lv_encoder_pin_init() {
         #define encrot0 0
         #define encrot1 1
         #define encrot2 2
-        
+
         uint8_t enc = 0;
         if (buttons & EN_A) enc |= B01;
         if (buttons & EN_B) enc |= B10;
