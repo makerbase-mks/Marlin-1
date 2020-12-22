@@ -182,7 +182,7 @@
 extern char public_buf_m[100];
 extern char public_buf_l[30];
 extern uint8_t bmp_public_buf[14 * 1024];
-extern uint8_t public_buf[513];
+extern uint8_t public_buf[512];
 
 typedef struct {
   uint32_t spi_flash_flag;
