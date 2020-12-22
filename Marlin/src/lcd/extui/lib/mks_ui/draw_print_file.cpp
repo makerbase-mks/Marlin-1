@@ -45,6 +45,7 @@ int8_t curDirLever = 0;
 LIST_FILE list_file;
 DIR_OFFSET dir_offset[10];
 
+extern uint8_t public_buf[512];
 extern char public_buf_m[100];
 
 uint8_t sel_id = 0;
@@ -84,6 +85,7 @@ uint8_t sel_id = 0;
       }
       list_file.Sd_file_cnt++;
     }
+    //card.closefile(false);
     return valid_name_cnt;
   }
 
@@ -92,7 +94,6 @@ uint8_t sel_id = 0;
 bool have_pre_pic(char *path) {
   #if ENABLED(SDSUPPORT)
     char *ps1, *ps2, *cur_name = strrchr(path, '/');
-    if (!cur_name) return false;
     card.openFileRead(cur_name);
     card.read(public_buf, 512);
     ps1 = strstr((char *)public_buf, ";simage:");
@@ -108,9 +109,11 @@ bool have_pre_pic(char *path) {
 static void event_handler(lv_obj_t *obj, lv_event_t event) {
   if (event != LV_EVENT_RELEASED) return;
   uint8_t i, file_count = 0;
-  
+  //switch (obj->mks_obj_id)
+  //{
   if (obj->mks_obj_id == ID_P_UP) {
     if (dir_offset[curDirLever].curPage > 0) {
+      // 2015.05.19
       list_file.Sd_file_cnt = 0;
 
       if (dir_offset[curDirLever].cur_page_first_offset >= FILE_NUM)
@@ -194,6 +197,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
 }
 
 void lv_draw_print_file(void) {
+  //uint8_t i;
   uint8_t file_count;
 
   curDirLever = 0;
@@ -212,7 +216,8 @@ void lv_draw_print_file(void) {
     file_count = search_file();
   #endif
   disp_gcode_icon(file_count);
-}
+  }
+
 static char test_public_buf_l[FILE_NUM][SHORT_NAME_LEN + strlen("S:/") + 1];
 void disp_gcode_icon(uint8_t file_num) {
   uint8_t i;
@@ -349,27 +354,198 @@ int ascii2dec_test(char *ascii) {
   return result;
 }
 
-void lv_gcode_file_read(uint8_t *data_buf) {
+static int gcode_file_read(uint8_t *data_buf, uint32_t & position) {
+  struct refill 
+  {
+    char buf[200];
+    uint32_t available;
+    uint32_t rpos;
+    uint32_t remain() const { return available - rpos; }
+    bool need(uint32_t amount) { 
+      if (!card.isFileOpen()) return false;
+      if (amount > sizeof(buf)) return false;
+      int toread = amount - remain();
+      if (toread <= 0) return true; // It's available already
+      available -= rpos;
+      memmove(buf, &buf[rpos], available);
+      rpos = 0;
+      card.read(&buf[available], toread);
+      available += toread;
+      return true;
+    }
+    char * head(uint32_t fetchqty) {
+      if (fetchqty + rpos > available && !need(fetchqty)) return 0;
+      rpos += fetchqty;
+      return &buf[rpos - fetchqty];
+    }
+    void revert(uint32_t qty) {
+      if (qty < rpos) rpos -= qty;
+      else rpos = 0;
+    }
+
+    refill() : available(0), rpos(0) {}
+  };
+
+  const size_t amountToRead = 200;
+  uint16_t count = 0; 
+  // We don't call setIndex in the loop below since it's seeking the file and card.read does not update the position
+  // So instead we keep track of the read position by ourself
+  uint32_t fileSize = card.getFileSize();
+  
+  // Clear the buffer with background color
+  memset(data_buf, 0, amountToRead);
+
+  refill tmp;
+  static bool rescaledOdd = false;
+  uint32_t prevPosition = position;
+  
+  if (position < 208) { // This is 400 bytes of hexadecimal data + strlen(;simage;)
+    // Step 1 here, let's find the beginning of the file's data
+    
+    // Prefetch a lot of data at once
+    if (!tmp.need(200)) {
+      card.closefile();
+      return -1;
+    }
+
+    char * p = tmp.head(1);
+    bool skipSearchNL = true; // First search, we just skip new line 
+    while(card.isFileOpen() && position < fileSize) {
+      if (!skipSearchNL) {
+        // Find next new line
+        while (p && (*p != '\r' && *p != '\n') && position < fileSize) { p = tmp.head(1); position++; }
+        if (!p) return -2; // Nothing can be done here
+        // Check if it's followed by a ';'
+        p = tmp.head(1);
+      }
+      if (p && *p != ';') { skipSearchNL = false; continue; }
+      position++;
+
+      // Check if we have a simage available now
+      p = tmp.head(7);
+      if (!p) return -3;
+      if (memcmp(p, "simage:", 7) == 0) { position += 7; break; }
+      if (memcmp(p, "gimage;", 7) == 0) return 1; 
+
+      // Not found, let's continue searching
+      tmp.revert(7);
+    }
+    if (!p) return -4;
+  }
+  // Now we should be on data, let's read as many as required
+  // Step 2
+  bool rescaleBy2 = false;
+  while (count < amountToRead && position < fileSize)
+  {
+    char * p = tmp.head(2);
+    if (!p) return -5;
+    
+    if (p[0] == '\r' || p[1] == '\r' || p[0] == '\n' || p[1] == '\n')
+    {
+      // End of line, let's check the exit condition here
+      if (p[1] != '\n' && p[1] != '\r') tmp.revert(1);
+      p = tmp.head(8);
+      if (!p || memcmp(p, ";;gimage", 8) == 0) {
+        // Step 3
+        position += 2;
+        return 1;
+      }
+      if (memcmp(p, "M10086 ;", 8) == 0) {
+        // Here we have a problem. This is called for lines of 200 bytes, so 100 pixels (with 16bit / pixels)
+        // Yet, the files above are only 50x50 so we can't just use that and expect it'll work
+        // We might need to resize the output, but this is only a guess since the image size is not in the header (why ?)
+        // So toggle the resize flag if we only processed half the width yet
+        if (count == amountToRead / 2) {
+          rescaleBy2 = true;
+          break;
+        }
+        position += 9;
+        // tmp.need(200); // Each line is 208 bytes long so it's perfectly safe now to fetch a complete line, or is it ?
+        continue;
+      }
+    }
+    data_buf[count++] = (char)(ascii2dec_test(&p[0]) << 4 | ascii2dec_test(&p[1]));
+    position += 2;
+  }
+  if (rescaleBy2) {
+    // We received a 50x50 icon and we were queried for a 100x50 icon, so resize the data now
+    // We have to progress backward to avoid overwriting what we just converted
+    uint16_t * db = (uint16_t*)data_buf;
+    for (int i = count - 1; i > 0; i-= 2) {
+      db[i] = db[i/2];
+      db[i-1] = db[i/2];
+    }
+    // We need to re-decode the same line next time we are called, so let's remember it 
+    if (!rescaledOdd) position = prevPosition;
+    rescaledOdd ^= true;
+  }
+
+  return 0;
+}
+
+void lv_gcode_file_read(uint8_t *data_buf, uint32_t unreliable_pos) {
+  /* Example file content:
+     --boundary_.oOo._F2003otnPwbPRz13/F4h0s+GUovex2zD
+     Content-Disposition: form-data; name="file"; filename="SP_Mutter.gcode"
+
+     ;simage:00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     M10086 ;00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     M10086 ;00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     M10086 ;00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     [...]
+     M10086 ;
+     ;;gimage:0000000000000000000000000000000000000000000000000000000000000000000000000
+     [...]
+     M10086 ;
+     ;FLAVOR:Marlin
+     ;TIME:1384
+     [...]
+  */
+  // The idea is to fetch the small image (simage) from the comments
+  // We'll be called multiple times without any possible storage :-/
+  
+  // So we have 3 steps to parse here
+  // Step 1: Find the first "\r;simage:" code (drop any byte read meanwhile) 
+  // Step 2: Extract all image data until end of line and skip header (`M10086 ;`) until we find a ';;' marker
+  // Step 3: Skip ';;' marker and end/close the file here
+
+  // Step 1 can only happen on first call, when card.file.curPosition() is 0
+  // We *must* make progress to reach a simage/M10086 section so that next call will not be inside the header
+  // Between call, we must be into the data itself (it's much easier this way)
   #if ENABLED(SDSUPPORT)
+    uint32_t position = card.getIndex();
+    int res = gcode_file_read(data_buf, position);
+    if (res >= 0)
+      card.setIndex(position);
+    else card.closefile();
+
+    // Fix the background color if required
+    uint16_t * db = (uint16_t *)data_buf;
+    for (size_t i = 0; i < 200 / sizeof(*db); i++)
+      if (db[i] == 0x0000) db[i] = LV_COLOR_BACKGROUND.full;
+  #endif
+    
+
+
+  #if ENABLED(SDSUPPORT) && 0
     uint16_t i = 0, j = 0, k = 0;
     uint16_t row_1    = 0;
     bool ignore_start = true;
-    const size_t pic_width = 200;
-    char temp_test[pic_width];
+    char temp_test[200];
     volatile uint16_t *p_index;
 
-    memset(public_buf, 0, pic_width);
+    memset(public_buf, 0, 200);
 
     while (card.isFileOpen()) {
       if (ignore_start) card.read(temp_test, 8); // line start -> ignore
-      card.read(temp_test, pic_width); // data
+      card.read(temp_test, 200); // data
       // \r;;gimage: we got the bit img, so stop here
       if (temp_test[1] == ';') {
         card.closefile();
         break;
       }
-      for (i = 0; i < pic_width;) {
-        public_buf[row_1 * pic_width + 100 * k + j] = (char)(ascii2dec_test(&temp_test[i]) << 4 | ascii2dec_test(&temp_test[i + 1]));
+      for (i = 0; i < 200;) {
+        public_buf[row_1 * 200 + 100 * k + j] = (char)(ascii2dec_test(&temp_test[i]) << 4 | ascii2dec_test(&temp_test[i + 1]));
         j++;
         i += 2;
       }
@@ -382,20 +558,33 @@ void lv_gcode_file_read(uint8_t *data_buf) {
       j = 0;
       ignore_start = false;
     }
-      for (i = 0; i < pic_width;) {
+    #if HAS_TFT_LVGL_UI_SPI
+      for (i = 0; i < 200;) {
         p_index = (uint16_t *)(&public_buf[i]);
 
+        //Color = (*p_index >> 8);
+        //*p_index = Color | ((*p_index & 0xFF) << 8);
         i += 2;
         if (*p_index == 0x0000) *p_index = LV_COLOR_BACKGROUND.full;
       }
-    memcpy(data_buf, public_buf, pic_width);
+    #else // !HAS_TFT_LVGL_UI_SPI
+      for (i = 0; i < 200;) {
+        p_index = (uint16_t *)(&public_buf[i]);
+        //Color = (*p_index >> 8);
+        //*p_index = Color | ((*p_index & 0xFF) << 8);
+        i += 2;
+        if (*p_index == 0x0000) *p_index = LV_COLOR_BACKGROUND.full; // 0x18C3;
+      }
+    #endif // !HAS_TFT_LVGL_UI_SPI
+    memcpy(data_buf, public_buf, 200);
   #endif // SDSUPPORT
 }
 
 void lv_close_gcode_file() {TERN_(SDSUPPORT, card.closefile());}
 
 void lv_gcode_file_seek(uint32_t pos) {
-  card.setIndex(pos);
+  // Don't seek. We don't care, since the parser will find its way in the file anyway and it breaks the logic if being seeked 
+  //card.setIndex(pos);
 }
 
 void cutFileName(char *path, int len, int bytePerLine, char *outStr) {
@@ -421,8 +610,7 @@ void cutFileName(char *path, int len, int bytePerLine, char *outStr) {
     strIndex2 = (char *)strrchr(tmpFile, '.');
   #endif
 
-  beginIndex = (strIndex1 != 0
-                ) ? strIndex1 + 1 : tmpFile;
+  beginIndex = strIndex1 != 0 ? strIndex1 + 1 : tmpFile;
 
   if (strIndex2 == 0 || (strIndex1 > strIndex2)) { // not gcode file
     #if _LFN_UNICODE
