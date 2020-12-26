@@ -39,6 +39,7 @@ void * hook_get_hardfault_vector_address(unsigned vtor)  { return (void*)(vtor +
 void * hook_get_memfault_vector_address(unsigned vtor)   { return (void*)(vtor + 0x04); }
 void * hook_get_busfault_vector_address(unsigned vtor)   { return (void*)(vtor + 0x05); }
 void * hook_get_usagefault_vector_address(unsigned vtor) { return (void*)(vtor + 0x06); }
+void * hook_get_reserved_vector_address(unsigned vtor)   { return (void*)(vtor + 0x07); }
 
 // Common exception frame for ARM, should work for all ARM CPU
 // Described here (modified for convenience): https://interrupt.memfault.com/blog/cortex-m-fault-debug
@@ -75,25 +76,22 @@ struct __attribute__((packed)) ContextSavedFrame {
 };
 
 
-// From https://interrupt.memfault.com/blog/cortex-m-fault-debug with addition of saving the exception's LR and the fault type
-// Please notice that the fault itself is accessible in the CFSR register at address 0xE000ED28
-#define WRITE_HANDLER(X) \
-  __attribute__((naked)) void FaultHandler_##X() { \
-    __asm__ __volatile__ ( \
-        "tst lr, #4\n" \
-        "ite eq\n" \
-        "mrseq r0, msp\n" \
-        "mrsne r0, psp\n" \
-        "mov r1,lr\n" \
-        "mov r2,#" #X "\n" \
-        "b CommonHandler_C\n" \
-    ); \
-  }
-
-WRITE_HANDLER(1);
-WRITE_HANDLER(2);
-WRITE_HANDLER(3);
-WRITE_HANDLER(4);
+extern "C"
+__attribute__((naked)) void CommonHandler_ASM() {
+  __asm__ __volatile__ ( 
+        // Bit 2 of LR tells which stack pointer to use (either main or process, only main should be used anyway)
+        "tst lr, #4\n" 
+        "ite eq\n" 
+        "mrseq r0, msp\n" 
+        "mrsne r0, psp\n"
+        // Save the LR in use when being interrupted 
+        "mov r1, lr\n" 
+        // Get the exception number from the ICSR register
+        "ldr r2, =0xE000ED00\n"
+        "ldr r2, [r2, #4]\n" 
+        "b CommonHandler_C\n" 
+  );
+}
 
 // Must be a macro to avoid creating a function frame
 #define HALT_IF_DEBUGGING()                              \
@@ -109,12 +107,12 @@ WRITE_HANDLER(4);
 static ContextSavedFrame savedFrame;
 static uint8_t           lastCause;
 bool resume_from_fault() {
-  static const char* causestr[] = { "Unknown", "Hard", "Mem", "Bus", "Usage" };
+  static const char* causestr[] = { "Thread", "Rsvd", "NMI", "Hard", "Mem", "Bus", "Usage", "7", "8", "9", "10", "SVC", "Dbg", "13", "PendSV", "SysTk", "IRQ" };
   // Reinit the serial link (might only work if implemented in each of your boards)
   MinSerial::init();
 
   MinSerial::TX("\n\n## Software Fault detected ##\n");
-  MinSerial::TX("Cause: "); MinSerial::TX(causestr[lastCause]); MinSerial::TX('\n');
+  MinSerial::TX("Cause: "); MinSerial::TX(causestr[min(lastCause, (uint8_t)16)]); MinSerial::TX('\n');
 
   MinSerial::TX("R0   : "); MinSerial::TXHex(savedFrame.R0);   MinSerial::TX('\n');
   MinSerial::TX("R1   : "); MinSerial::TXHex(savedFrame.R1);   MinSerial::TX('\n');
@@ -184,10 +182,17 @@ void CommonHandler_C(ContextStateFrame * frame, unsigned long lr, unsigned long 
 
   // If you are using it'll stop here
   HALT_IF_DEBUGGING();
-  
-  // Save the state to backtrace later on
-  memcpy(&savedFrame, frame, sizeof(*frame));
-  lastCause = cause;
+
+  // Save the state to backtrace later on (don't call memcpy here since the stack can be corrupted)
+  savedFrame.R0  = frame->r0;
+  savedFrame.R1  = frame->r1;
+  savedFrame.R2  = frame->r2;
+  savedFrame.R3  = frame->r3;
+  savedFrame.R12 = frame->r12;
+  savedFrame.LR  = frame->lr;
+  savedFrame.PC  = frame->pc;
+  savedFrame.XPSR= frame->xpsr;
+  lastCause = cause & 0x1FF;
   
   volatile uint32_t &CFSR = HW_REG(0xE000ED28);
   savedFrame.CFSR = CFSR; 
@@ -226,70 +231,91 @@ void CommonHandler_C(ContextStateFrame * frame, unsigned long lr, unsigned long 
   resume_from_fault();
 }
 
+
 void hook_cpu_exceptions() {
-  // On ARM 32bits CPU, the vector table is like this:
-  // 0x0C => Hardfault
-  // 0x10 => MemFault
-  // 0x14 => BusFault
-  // 0x18 => UsageFault
+  #if ENABLED(DYNAMIC_VECTORTABLE)
+    // On ARM 32bits CPU, the vector table is like this:
+    // 0x0C => Hardfault
+    // 0x10 => MemFault
+    // 0x14 => BusFault
+    // 0x18 => UsageFault
 
-  // Unfortunately, it's usually run from flash, and we can't write to flash here directly to hook our instruction
-  // We could set an hardware breakpoint, and hook on the fly when it's being called, but this
-  // is hard to get right and would probably break debugger when attached
+    // Unfortunately, it's usually run from flash, and we can't write to flash here directly to hook our instruction
+    // We could set an hardware breakpoint, and hook on the fly when it's being called, but this
+    // is hard to get right and would probably break debugger when attached
 
-  // So instead, we'll allocate a new vector table filled with the previous value except
-  // for the fault we are interested in.
-  // Now, comes the issue to figure out what is the current vector table size
-  // There is nothing telling us what is the vector table as it's per-cpu vendor specific.
-  // BUT: we are being called at the end of the setup, so we assume the setup is done
-  // Thus, we can read the current vector table until we find an address that's not in flash, and it would mark the
-  // end of the vector table (skipping the fist entry obviously)
-  // The position of the program in flash is expected to be at 0x08xxx xxxx on all known platform for ARM and the
-  // flash size is available via register 0x1FFFF7E0 on STM32 family, but it's not the case for all ARM boards
-  // (accessing this register might trigger a fault if it's not implemented).
+    // So instead, we'll allocate a new vector table filled with the previous value except
+    // for the fault we are interested in.
+    // Now, comes the issue to figure out what is the current vector table size
+    // There is nothing telling us what is the vector table as it's per-cpu vendor specific.
+    // BUT: we are being called at the end of the setup, so we assume the setup is done
+    // Thus, we can read the current vector table until we find an address that's not in flash, and it would mark the
+    // end of the vector table (skipping the fist entry obviously)
+    // The position of the program in flash is expected to be at 0x08xxx xxxx on all known platform for ARM and the
+    // flash size is available via register 0x1FFFF7E0 on STM32 family, but it's not the case for all ARM boards
+    // (accessing this register might trigger a fault if it's not implemented).
 
-  // So we'll simply mask the top 8 bits of the first handler as an hint of being in the flash or not -that's poor and will
-  // probably break if the flash happens to be more than 128MB, but in this case, we are not magician, we need help from outside.
+    // So we'll simply mask the top 8 bits of the first handler as an hint of being in the flash or not -that's poor and will
+    // probably break if the flash happens to be more than 128MB, but in this case, we are not magician, we need help from outside.
 
-  unsigned long * vecAddr = (unsigned long*)get_vtor();
+    unsigned long * vecAddr = (unsigned long*)get_vtor();
+    SERIAL_ECHO("Vector table addr: ");
+    SERIAL_PRINTLN(get_vtor(), HEX);
 
-  #ifdef VECTOR_TABLE_SIZE
-    uint32_t vec_size = VECTOR_TABLE_SIZE;
-    alignas(128) static unsigned long vectable[VECTOR_TABLE_SIZE] ;
-  #else
-    #ifndef IS_IN_FLASH
-      #define IS_IN_FLASH(X) (((unsigned long)X & 0xFF000000) == 0x08000000)
+    #ifdef VECTOR_TABLE_SIZE
+      uint32_t vec_size = VECTOR_TABLE_SIZE;
+      alignas(128) static unsigned long vectable[VECTOR_TABLE_SIZE] ;
+    #else
+      #ifndef IS_IN_FLASH
+        #define IS_IN_FLASH(X) (((unsigned long)X & 0xFF000000) == 0x08000000)
+      #endif
+
+      // When searching for the end of the vector table, this acts as a limit not to overcome
+      #ifndef VECTOR_TABLE_SENTINEL
+        #define VECTOR_TABLE_SENTINEL 80
+      #endif
+
+      // Find the vector table size
+      uint32_t vec_size = 1;
+      while (IS_IN_FLASH(vecAddr[vec_size]) && vec_size < VECTOR_TABLE_SENTINEL)
+        vec_size++;
+
+      // We failed to find a valid vector table size, let's abort hooking up
+      if (vec_size == VECTOR_TABLE_SENTINEL) return;
+      // Poor method that's wasting RAM here, but allocating with malloc and alignment would be worst
+      // 128 bytes alignement is required for writing the VTOR register
+      alignas(128) static unsigned long vectable[VECTOR_TABLE_SENTINEL];
+
+      SERIAL_ECHO("Detected vector table size: ");
+      SERIAL_PRINTLN(vec_size, HEX);
     #endif
 
-    // When searching for the end of the vector table, this acts as a limit not to overcome
-    #ifndef VECTOR_TABLE_SENTINEL
-      #define VECTOR_TABLE_SENTINEL 80
-    #endif
+    uint32_t defaultFaultHandler = vecAddr[(unsigned)7];
+    // Copy the current vector table into the new table
+    for (uint32_t i = 0; i < vec_size; i++)
+    {
+      vectable[i] = vecAddr[i];
+      // Replace all default handler by our own handler
+      if (vectable[i] == defaultFaultHandler)
+        vectable[i] = (unsigned long)&CommonHandler_ASM;
+    }
 
-    // Find the vector table size
-    uint32_t vec_size = 1;
-    while (IS_IN_FLASH(vecAddr[vec_size]) && vec_size < VECTOR_TABLE_SENTINEL)
-      vec_size++;
+      
+    
+    // Let's hook now with our functions
+    vectable[(unsigned long)hook_get_hardfault_vector_address(0)]  = (unsigned long)&CommonHandler_ASM;
+    vectable[(unsigned long)hook_get_memfault_vector_address(0)]   = (unsigned long)&CommonHandler_ASM;
+    vectable[(unsigned long)hook_get_busfault_vector_address(0)]   = (unsigned long)&CommonHandler_ASM;
+    vectable[(unsigned long)hook_get_usagefault_vector_address(0)] = (unsigned long)&CommonHandler_ASM;
 
-    // We failed to find a valid vector table size, let's abort hooking up
-    if (vec_size == VECTOR_TABLE_SENTINEL) return;
-    // Poor method that's wasting RAM here, but allocating with malloc and alignment would be worst
-    // 128 bytes alignement is required for writing the VTOR register
-    alignas(128) static unsigned long vectable[VECTOR_TABLE_SENTINEL];
+
+    // Finally swap with our own vector table
+    // This is supposed to be atomic, but let's do that with interrupt disabled
+
+    HW_REG(0xE000ED08) = (unsigned long)vectable | (1<<29UL); // 29th bit is for telling the CPU the table is now in SRAM (should be present already)
+
+    SERIAL_ECHOLN("Installed fault handlers");
   #endif
-
-  // Copy the current vector table into the new table
-  for (uint32_t i = 0; i < vec_size; i++)
-    vectable[i] = vecAddr[i];
-
-  // Let's hook now with our functions
-  vectable[(unsigned long)hook_get_hardfault_vector_address(0)]  = (unsigned long)&FaultHandler_1;
-  vectable[(unsigned long)hook_get_memfault_vector_address(0)]   = (unsigned long)&FaultHandler_2;
-  vectable[(unsigned long)hook_get_busfault_vector_address(0)]   = (unsigned long)&FaultHandler_3;
-  vectable[(unsigned long)hook_get_usagefault_vector_address(0)] = (unsigned long)&FaultHandler_4;
-
-  // Finally swap with our own vector table
-  HW_REG(0xE000ED08) = (unsigned long)vectable | (1<<29UL); // 29th bit is for telling the CPU the table is now in SRAM (should be present already)
 }
 
 #endif // __arm__ || __thumb__

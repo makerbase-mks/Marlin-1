@@ -87,5 +87,28 @@ void install_min_serial() {
   HAL_min_serial_out = &TX;
 }
 
+#if !ENABLED(DYNAMIC_VECTORTABLE)
+extern "C"
+{
+  __attribute__((naked)) void JumpHandler_ASM() {
+    __asm__ __volatile__ ( 
+        "b CommonHandler_ASM\n" 
+    );
+  }
+  
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __exc_hardfault();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __exc_busfault();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __exc_usagefault();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __exc_memmanage();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __exc_nmi();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __stm32reservedexception7();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __stm32reservedexception8();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __stm32reservedexception9();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __stm32reservedexception10();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) __stm32reservedexception13();
+
+}
+#endif
+
 #endif // POST_MORTEM_DEBUGGING
 #endif // __STM32F1__

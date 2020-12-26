@@ -968,6 +968,7 @@ inline void tmc_standby_setup() {
  */
 void setup() {
 
+
   tmc_standby_setup();  // TMC Low Power Standby pins must be set early or they're not usable
 
   #if ENABLED(MARLIN_DEV_MODE)
@@ -1010,6 +1011,8 @@ void setup() {
     serial_connect_timeout = millis() + 1000UL;
     while (/*!WIFISERIAL && */PENDING(millis(), serial_connect_timeout)) { /*nada*/ }
   #endif
+
+  TERN_(DYNAMIC_VECTORTABLE, hook_cpu_exceptions()); // If supported, install Marlin exception handlers at runtime
 
   SETUP_RUN(HAL_init());
 
@@ -1332,8 +1335,6 @@ void setup() {
   #if BOTH(HAS_LCD_MENU, TOUCH_SCREEN_CALIBRATION) && EITHER(TFT_CLASSIC_UI, TFT_COLOR_UI)
     ui.check_touch_calibration();
   #endif
-
-  TERN_(POST_MORTEM_DEBUGGING, hook_cpu_exceptions()); // If supported, install Marlin exception handlers
 
   marlin_state = MF_RUNNING;
 
