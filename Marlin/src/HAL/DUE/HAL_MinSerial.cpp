@@ -72,5 +72,22 @@ void install_min_serial() {
   HAL_min_serial_out = &TX;
 }
 
+#if !ENABLED(DYNAMIC_VECTORTABLE)
+extern "C"
+{
+  __attribute__((naked)) void JumpHandler_ASM() {
+    __asm__ __volatile__ ( 
+        "b CommonHandler_ASM\n" 
+    );
+  }
+  
+  void __attribute__((naked, alias("JumpHandler_ASM"))) HardFault_Handler();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) BusFault_Handler();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) UsageFault_Handler();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) MemManage_Handler();
+  void __attribute__((naked, alias("JumpHandler_ASM"))) NMI_Handler();
+}
+#endif
+
 #endif // POST_MORTEM_DEBUGGING
 #endif // ARDUINO_ARCH_SAM
