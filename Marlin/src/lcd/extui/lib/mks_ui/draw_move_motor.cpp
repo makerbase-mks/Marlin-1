@@ -27,12 +27,17 @@
 #include <lv_conf.h>
 
 #include "../../../../gcode/queue.h"
+#include "../../../../module/motion.h"
 #include "../../../../inc/MarlinConfig.h"
 
 extern lv_group_t *g;
 static lv_obj_t *scr;
 
-static lv_obj_t *labelV, *buttonV;
+static lv_obj_t *labelV, *buttonV, *labelP;
+static char cur_label = 'Z'; 
+static float cur_pos = 0;
+
+void disp_cur_pos();
 
 enum {
   ID_M_X_P = 1,
@@ -54,6 +59,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 X%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_one_P(PSTR("G90"));
+        cur_label = 'X';
+        cur_pos = current_position.x;
       }
       break;
     case ID_M_X_N:
@@ -62,6 +69,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 X-%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
+        cur_label = 'X';
+        cur_pos = current_position.x;
       }
       break;
     case ID_M_Y_P:
@@ -70,6 +79,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 Y%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
+        cur_label = 'Y';
+        cur_pos = current_position.y;
       }
       break;
     case ID_M_Y_N:
@@ -78,6 +89,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 Y-%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
+        cur_label = 'Y';
+        cur_pos = current_position.y;
       }
       break;
     case ID_M_Z_P:
@@ -86,6 +99,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 Z%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
+        cur_label = 'Z';
+        cur_pos = current_position.z;
       }
       break;
     case ID_M_Z_N:
@@ -94,6 +109,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         sprintf_P(public_buf_l, PSTR("G1 Z-%3.1f F%d"), uiCfg.move_dist, uiCfg.moveSpeed);
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
+        cur_label = 'Z';
+        cur_pos = current_position.z;
       }
       break;
     case ID_M_STEP:
@@ -106,8 +123,9 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
     case ID_M_RETURN:
       clear_cur_ui();
       draw_return_ui();
-      break;
+      return;
   }
+  disp_cur_pos();
 }
 
 void lv_draw_move_motor(void) {
@@ -129,9 +147,24 @@ void lv_draw_move_motor(void) {
     }
   #endif
 
+
   lv_big_button_create(scr, "F:/bmp_return.bin", common_menu.text_back, BTN_X_PIXEL * 3 + INTERVAL_V * 4, BTN_Y_PIXEL + INTERVAL_H + titleHeight, event_handler, ID_M_RETURN);
 
+  // We need to patch the title to leave some space on the right for displaying the status
+  lv_obj_t * title = lv_obj_get_child_back(scr, NULL);
+  if (title != NULL) lv_obj_set_width(title, TFT_WIDTH - 101);
+  labelP = lv_label_create(scr, TFT_WIDTH - 100, TITLE_YPOS, "0");
+  lv_obj_clear_protect(labelP, LV_PROTECT_FOLLOW);
+  lv_obj_align(labelP, scr, LV_ALIGN_IN_TOP_RIGHT, -100, 0);
+
+
   disp_move_dist();
+  disp_cur_pos();
+}
+
+void disp_cur_pos() {
+  sprintf_P(public_buf_l, PSTR("%c:%3.1fmm"), cur_label, cur_pos);
+  lv_label_set_text(labelP, public_buf_l);
 }
 
 void disp_move_dist() {
