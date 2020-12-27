@@ -34,6 +34,7 @@ extern lv_group_t *g;
 static lv_obj_t *scr;
 
 static lv_obj_t *labelV, *buttonV, *labelP;
+static lv_task_t *updatePosTask;
 static char cur_label = 'Z'; 
 static float cur_pos = 0;
 
@@ -60,7 +61,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_one_P(PSTR("G90"));
         cur_label = 'X';
-        cur_pos = current_position.x;
       }
       break;
     case ID_M_X_N:
@@ -70,7 +70,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
         cur_label = 'X';
-        cur_pos = current_position.x;
       }
       break;
     case ID_M_Y_P:
@@ -80,7 +79,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
         cur_label = 'Y';
-        cur_pos = current_position.y;
       }
       break;
     case ID_M_Y_N:
@@ -90,7 +88,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
         cur_label = 'Y';
-        cur_pos = current_position.y;
       }
       break;
     case ID_M_Z_P:
@@ -100,7 +97,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
         cur_label = 'Z';
-        cur_pos = current_position.z;
       }
       break;
     case ID_M_Z_N:
@@ -110,7 +106,6 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
         queue.enqueue_one_now(public_buf_l);
         queue.enqueue_now_P(PSTR("G90"));
         cur_label = 'Z';
-        cur_pos = current_position.z;
       }
       break;
     case ID_M_STEP:
@@ -128,6 +123,16 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
   disp_cur_pos();
 }
 
+void refresh_pos(lv_task_t *)
+{
+  switch(cur_label) {
+    case 'X': cur_pos = current_position.x; break;
+    case 'Y': cur_pos = current_position.y; break;
+    case 'Z': cur_pos = current_position.z; break;
+    default: return;
+  }
+  disp_cur_pos();
+}
 void lv_draw_move_motor(void) {
   scr = lv_screen_create(MOVE_MOTOR_UI);
   lv_obj_t *buttonXI = lv_big_button_create(scr, "F:/bmp_xAdd.bin", move_menu.x_add, INTERVAL_V, titleHeight, event_handler, ID_M_X_P);
@@ -153,18 +158,20 @@ void lv_draw_move_motor(void) {
   // We need to patch the title to leave some space on the right for displaying the status
   lv_obj_t * title = lv_obj_get_child_back(scr, NULL);
   if (title != NULL) lv_obj_set_width(title, TFT_WIDTH - 101);
-  labelP = lv_label_create(scr, TFT_WIDTH - 100, TITLE_YPOS, "0");
-  lv_obj_clear_protect(labelP, LV_PROTECT_FOLLOW);
-  lv_obj_align(labelP, scr, LV_ALIGN_IN_TOP_RIGHT, -100, 0);
+  labelP = lv_label_create(scr, TFT_WIDTH - 100, TITLE_YPOS, "Z:0.0mm");
+  if (labelP != NULL) {
+    updatePosTask = lv_task_create(refresh_pos, 300, LV_TASK_PRIO_LOWEST, 0);
+  }
 
 
   disp_move_dist();
   disp_cur_pos();
 }
 
+
 void disp_cur_pos() {
   sprintf_P(public_buf_l, PSTR("%c:%3.1fmm"), cur_label, cur_pos);
-  lv_label_set_text(labelP, public_buf_l);
+  if (labelP) lv_label_set_text(labelP, public_buf_l);
 }
 
 void disp_move_dist() {
@@ -195,6 +202,7 @@ void lv_clear_move_motor() {
   #if HAS_ROTARY_ENCODER
     if (gCfgItems.encoder_enable) lv_group_remove_all_objs(g);
   #endif
+  lv_task_del(updatePosTask);
   lv_obj_del(scr);
 }
 
