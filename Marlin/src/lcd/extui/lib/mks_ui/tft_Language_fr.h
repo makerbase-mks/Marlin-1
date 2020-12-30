@@ -29,7 +29,6 @@
 #define PRINT_TEXT_FR                 "Impression"
 #define EXTRUDE_TEXT_FR               "Extruder"
 #define LEVELING_TEXT_FR              "Leveling"
-#define MLEVELING_TEXT_FR              "Leveling"
 #define AUTO_LEVELING_TEXT_FR         "AutoLevel"
 #define SET_TEXT_FR                   "Config"
 #define MORE_TEXT_FR                  "Plus"
@@ -51,7 +50,6 @@
 #define TOOL_MOVE_FR                  "Déplace"
 #define TOOL_HOME_FR                  "Acceuil"
 #define TOOL_LEVELING_FR              "Leveling"
-#define TOOL_MLEVELING_FR              "Leveling"
 #define TOOL_AUTO_LEVELING_FR         "AutoLevel"
 #define TOOL_FILAMENT_FR              "Filament"
 #define TOOL_MORE_FR                  "Plus"
@@ -137,26 +135,12 @@
 #define FILAMENT_EXT1_TEXT_FR         "Extr2"
 #define FILAMENT_HEAT_TEXT_FR         "Preheat"
 #define FILAMENT_STOP_TEXT_FR         "Arrêter"
-//#define FILAMENT_CHANGE_TEXT_FR     "Filament remplacer"
 #define FILAMENT_TIPS2_TEXT_FR        "T:"
 #define FILAMENT_TIPS3_TEXT_FR        "Insérer le filament..."
 #define FILAMENT_TIPS4_TEXT_FR        "éjecter le filament..."
 #define FILAMENT_TIPS5_TEXT_FR        "Température trop basse pour démarrer, chauffez svp"
 #define FILAMENT_TIPS6_TEXT_FR        "Terminé"
 
-#if 0
-  #define FILAMENT_REPLAYS_IDLE_TEXT_FR             "Please click <Insérer> or <éjecter> \nto replace filament!"
-  #define FILAMENT_CHANGE_TEXT_FR                   "Please click <Insérer> or <éjecter>,\nAfter pinter pause."
-  #define FILAMENT_DIALOG_LOAD_HEAT_TIPS_FR         "Heating up the nozzle,please wait..."
-  #define FILAMENT_DIALOG_UNLOAD_HEAT_TIPS_FR       "Heating up the nozzle,please wait..."
-  #define FILAMENT_DIALOG_LOAD_CONFIRM1_TIPS_FR     "Heat completed,please load filament to extruder,and click <Confirmer> for start loading."
-  #define FILAMENT_DIALOG_LOAD_CONFIRM2_TIPS_FR     "Please load filament to extruder,and click <Confirmer> for start loading."
-  #define FILAMENT_DIALOG_UNLOAD_CONFIRM_TIPS_FR    "Heat completed,please click <Confirmer> for start unloading.!"
-  #define FILAMENT_DIALOG_LOADING_TIPS_FR           "Is loading ,please wait!"
-  #define FILAMENT_DIALOG_UNLOADING_TIPS_FR         "Is unloading,please wait!"
-  #define FILAMENT_DIALOG_LOAD_COMPLETE_TIPS_FR     "Load filament completed,click <Confirmer> for return!"
-  #define FILAMENT_DIALOG_UNLOAD_COMPLETE_TIPS_FR   "Unload filament completed,click <Confirmer> for return!"
-#endif
 #define FILAMENT_CHANGE_TEXT_FR                   "Please click <Load> \nor <unload>,After \npinter pause."
 #define FILAMENT_DIALOG_LOAD_HEAT_TIPS_FR         "Heating up the nozzle,\nplease wait..."
 #define FILAMENT_DIALOG_UNLOAD_HEAT_TIPS_FR       "Heating up the nozzle,\nplease wait..."
@@ -173,15 +157,8 @@
 #define PRE_HEAT_BED_TEXT_FR          "Bed"
 
 #define FILE_LOADING_FR               "Chargement......"
-#if 0
-  #define NO_FILE_AND_CHECK_FR        "Aucun fichier trouvé! Insérez une carte SD ou un disque U!"
-#else
-  #define NO_FILE_AND_CHECK_FR        "Aucun fichier,vérifiez à nouveau!"
-#endif
-
+#define NO_FILE_AND_CHECK_FR        "Aucun fichier,vérifiez à nouveau!"
 #define NO_FILE_FR                    "Pas de fichier!"
-
-
 
 #define EXTRUDER_TEMP_TEXT_FR         "Temper"
 #define EXTRUDER_E_LENGTH1_TEXT_FR    "Extruder1"
@@ -249,7 +226,6 @@
 
 #define DIALOG_STOP_FR                "Arrêter"
 #define DIALOG_REPRINT_FROM_BREAKPOINT_FR "Continuer?"
-//#define DIALOG_UNBIND_PRINTER_FR    "Non lié?"
 #define DIALOG_ERROR_TIPS1_FR         "Erreur:error:Aucun fichier, \nvérifiez à nouveau."
 #define DIALOG_ERROR_TIPS2_FR         "Erreur:La opération a échoué. \nVerifiez que le baudrate de l'écran et de \nla carte mère soient identique!"
 #define DIALOG_ERROR_TIPS3_FR         "Erreur: le nom du fichier ou le \nchemin d'accès est trop long."

@@ -27,10 +27,6 @@
 #include "draw_set.h"
 #include "draw_ui.h"
 #include <lv_conf.h>
-//#include "../lvgl/src/lv_objx/lv_imgbtn.h"
-//#include "../lvgl/src/lv_objx/lv_img.h"
-//#include "../lvgl/src/lv_core/lv_disp.h"
-//#include "../lvgl/src/lv_core/lv_refr.h"
 
 #include "../../../../gcode/queue.h"
 #include "../../../../inc/MarlinConfig.h"
@@ -70,8 +66,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event) {
       queue.inject_P(PSTR("M84 X Y"));
       break;
     case ID_H_RETURN:
-      lv_clear_home();
-      lv_draw_tool();
+      clear_cur_ui();
+      draw_return_ui();
       break;
   }
 }

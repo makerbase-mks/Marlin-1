@@ -26,7 +26,7 @@
 #include <lv_conf.h>
 #include "tft_lvgl_configuration.h"
 
-#if ENABLED(USES_MKS_WIFI_FUNCTION)
+#if ENABLED(MKS_WIFI_MODULE)
 
 #include "draw_ui.h"
 
@@ -141,16 +141,14 @@ void lv_draw_wifi_settings(void) {
       lv_label_set_text(labelModelValue, WIFI_STA_TEXT);
       lv_obj_align(labelModelValue, buttonModelValue, LV_ALIGN_CENTER, 0, 0);
     }
-    public_buf_m[0] = '\0';
-    strcat(public_buf_m, machine_menu.wifiName);
+    strcpy(public_buf_m, machine_menu.wifiName);
     strcat(public_buf_m, (const char *)uiCfg.wifi_name);
     lv_label_set_text(labelNameText, public_buf_m);
 
     lv_label_set_text(labelNameValue, machine_menu.wifiEdit);
     lv_obj_align(labelNameValue, buttonNameValue, LV_ALIGN_CENTER, 0, 0);
 
-    public_buf_m[0] = '\0';
-    strcat(public_buf_m, machine_menu.wifiPassWord);
+    strcpy(public_buf_m, machine_menu.wifiPassWord);
     strcat(public_buf_m, (const char *)uiCfg.wifi_key);
     lv_label_set_text(labelPassWordText, public_buf_m);
 
@@ -186,5 +184,5 @@ void lv_clear_wifi_settings() {
   lv_obj_del(scr);
 }
 
-#endif // USES_MKS_WIFI_FUNCTION
+#endif // MKS_WIFI_MODULE
 #endif // HAS_TFT_LVGL_UI

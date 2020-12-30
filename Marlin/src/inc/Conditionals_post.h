@@ -120,43 +120,6 @@
   #endif
 #endif
 
-/**
- * CoreXY, CoreXZ, and CoreYZ - and their reverse
- */
-#if EITHER(COREXY, COREYX)
-  #define CORE_IS_XY 1
-#endif
-#if EITHER(COREXZ, COREZX)
-  #define CORE_IS_XZ 1
-#endif
-#if EITHER(COREYZ, COREZY)
-  #define CORE_IS_YZ 1
-#endif
-#if CORE_IS_XY || CORE_IS_XZ || CORE_IS_YZ
-  #define IS_CORE 1
-#endif
-#if IS_CORE
-  #if CORE_IS_XY
-    #define CORE_AXIS_1 A_AXIS
-    #define CORE_AXIS_2 B_AXIS
-    #define NORMAL_AXIS Z_AXIS
-  #elif CORE_IS_XZ
-    #define CORE_AXIS_1 A_AXIS
-    #define NORMAL_AXIS Y_AXIS
-    #define CORE_AXIS_2 C_AXIS
-  #elif CORE_IS_YZ
-    #define NORMAL_AXIS X_AXIS
-    #define CORE_AXIS_1 B_AXIS
-    #define CORE_AXIS_2 C_AXIS
-  #endif
-  #define CORESIGN(n) (ANY(COREYX, COREZX, COREZY) ? (-(n)) : (n))
-#elif ENABLED(MARKFORGED_XY)
-  // Markforged kinematics
-  #define CORE_AXIS_1 A_AXIS
-  #define CORE_AXIS_2 B_AXIS
-  #define NORMAL_AXIS Z_AXIS
-#endif
-
 // Calibration codes only for non-core axes
 #if EITHER(BACKLASH_GCODE, CALIBRATION_GCODE)
   #if EITHER(IS_CORE, MARKFORGED_XY)
@@ -1684,6 +1647,54 @@
   #ifndef E7_INTERPOLATE
     #define E7_INTERPOLATE INTERPOLATE
   #endif
+  #ifndef X_SLAVE_ADDRESS
+    #define X_SLAVE_ADDRESS  0
+  #endif
+  #ifndef Y_SLAVE_ADDRESS
+    #define Y_SLAVE_ADDRESS  0
+  #endif
+  #ifndef Z_SLAVE_ADDRESS
+    #define Z_SLAVE_ADDRESS  0
+  #endif
+  #ifndef X2_SLAVE_ADDRESS
+    #define X2_SLAVE_ADDRESS 0
+  #endif
+  #ifndef Y2_SLAVE_ADDRESS
+    #define Y2_SLAVE_ADDRESS 0
+  #endif
+  #ifndef Z2_SLAVE_ADDRESS
+    #define Z2_SLAVE_ADDRESS 0
+  #endif
+  #ifndef Z3_SLAVE_ADDRESS
+    #define Z3_SLAVE_ADDRESS 0
+  #endif
+  #ifndef Z4_SLAVE_ADDRESS
+    #define Z4_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E0_SLAVE_ADDRESS
+    #define E0_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E1_SLAVE_ADDRESS
+    #define E1_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E2_SLAVE_ADDRESS
+    #define E2_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E3_SLAVE_ADDRESS
+    #define E3_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E4_SLAVE_ADDRESS
+    #define E4_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E5_SLAVE_ADDRESS
+    #define E5_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E6_SLAVE_ADDRESS
+    #define E6_SLAVE_ADDRESS 0
+  #endif
+  #ifndef E7_SLAVE_ADDRESS
+    #define E7_SLAVE_ADDRESS 0
+  #endif
 #endif
 
 #if (HAS_E_DRIVER(TMC2660) \
@@ -1811,12 +1822,19 @@
   #define HAS_TEMP_ADC_CHAMBER 1
 #endif
 
-#if HAS_HOTEND && ANY(HAS_TEMP_ADC_0, HEATER_0_USES_MAX6675, HEATER_0_DUMMY_THERMISTOR)
+#define HAS_TEMP(N) ANY(HAS_TEMP_ADC_##N, HEATER_##N##_USES_MAX6675, HEATER_##N##_DUMMY_THERMISTOR)
+#if HAS_HOTEND && HAS_TEMP(0)
   #define HAS_TEMP_HOTEND 1
 #endif
-#define HAS_TEMP_BED        HAS_TEMP_ADC_BED
-#define HAS_TEMP_PROBE      HAS_TEMP_ADC_PROBE
-#define HAS_TEMP_CHAMBER    HAS_TEMP_ADC_CHAMBER
+#if HAS_TEMP(BED)
+  #define HAS_TEMP_BED 1
+#endif
+#if HAS_TEMP(PROBE)
+  #define HAS_TEMP_PROBE 1
+#endif
+#if HAS_TEMP(CHAMBER)
+  #define HAS_TEMP_CHAMBER 1
+#endif
 
 #if ENABLED(JOYSTICK)
   #if PIN_EXISTS(JOY_X)
@@ -2026,6 +2044,9 @@
 #endif
 #if NUM_SERVOS > 0
   #define HAS_SERVOS 1
+#endif
+#if HAS_SERVOS && defined(PAUSE_SERVO_OUTPUT) && defined(RESUME_SERVO_OUTPUT)
+  #define HAS_PAUSE_SERVO_OUTPUT 1
 #endif
 
 // Sensors
@@ -2344,11 +2365,7 @@
     #define Z_PROBE_OFFSET_RANGE_MAX 20
   #endif
   #ifndef XY_PROBE_SPEED
-    #ifdef HOMING_FEEDRATE_XY
-      #define XY_PROBE_SPEED HOMING_FEEDRATE_XY
-    #else
-      #define XY_PROBE_SPEED 4000
-    #endif
+    #define XY_PROBE_SPEED ((homing_feedrate_mm_m.x + homing_feedrate_mm_m.y) / 2)
   #endif
   #ifndef NOZZLE_TO_PROBE_OFFSET
     #define NOZZLE_TO_PROBE_OFFSET { 0, 0, 0 }
@@ -2404,7 +2421,7 @@
 #endif
 
 #if HAS_BED_PROBE && (EITHER(PROBING_HEATERS_OFF, PROBING_FANS_OFF) || DELAY_BEFORE_PROBING > 0)
-  #define QUIET_PROBING 1
+  #define HAS_QUIET_PROBING 1
 #endif
 #if EITHER(ADVANCED_PAUSE_FEATURE, PROBING_HEATERS_OFF)
   #define HEATER_IDLE_HANDLER 1
@@ -2476,6 +2493,10 @@
   #ifndef DELTA_DIAGONAL_ROD_TRIM_TOWER
     #define DELTA_DIAGONAL_ROD_TRIM_TOWER { 0, 0, 0 }
   #endif
+#endif
+
+#ifndef DEFAULT_LEVELING_FADE_HEIGHT
+  #define DEFAULT_LEVELING_FADE_HEIGHT 0.0
 #endif
 
 #if ENABLED(SEGMENT_LEVELED_MOVES) && !defined(LEVELED_SEGMENT_LENGTH)

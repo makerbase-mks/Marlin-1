@@ -243,7 +243,7 @@ void lv_draw_print_file(void) {
   }
   */
 }
-static char test_public_buf_l[FILE_NUM][SHORT_NEME_LEN + 6];
+static char test_public_buf_l[40];
 void disp_gcode_icon(uint8_t file_num) {
   uint8_t i;
 
@@ -294,14 +294,12 @@ void disp_gcode_icon(uint8_t file_num) {
 
           //lv_obj_set_event_cb_mks(buttonGcode[i], event_handler, (i + 1), list_file.file_name[i], 1);
 
-          char *cur_name = strrchr(list_file.file_name[i], '/');
-		      test_public_buf_l[i][0] = '\0';
-          strcat(test_public_buf_l[i],"S:");
-          strcat(test_public_buf_l[i],cur_name);
-          char *temp = strstr(test_public_buf_l[i],".GCO");
+          strcpy(test_public_buf_l, "S:");
+          strcat(test_public_buf_l, list_file.file_name[i]);
+          char *temp = strstr(test_public_buf_l, ".GCO");
           if (temp) strcpy(temp, ".bin");
           lv_obj_set_event_cb_mks(buttonGcode[i], event_handler, (i + 1), "", 0);
-          lv_imgbtn_set_src_both(buttonGcode[i], test_public_buf_l[i]);
+          lv_imgbtn_set_src_both(buttonGcode[i], test_public_buf_l);
           if (i < 3) {
             lv_obj_set_pos(buttonGcode[i], BTN_X_PIXEL * i + INTERVAL_V * (i + 1) + FILE_PRE_PIC_X_OFFSET, titleHeight + FILE_PRE_PIC_Y_OFFSET);
             buttonText[i] = lv_btn_create(scr, nullptr);

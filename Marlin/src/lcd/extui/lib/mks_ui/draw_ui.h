@@ -28,7 +28,7 @@
 
 // the colors of the last MKS Ui
 #undef LV_COLOR_BACKGROUND
-#define LV_COLOR_BACKGROUND LV_COLOR_MAKE(0x1A, 0x1A, 0x1A) // LV_COLOR_MAKE(0x00, 0x00, 0x00)
+#define LV_COLOR_BACKGROUND LV_COLOR_MAKE(0x1A, 0x1A, 0x1A)
 
 #define TFT_LV_PARA_BACK_BODY_COLOR  LV_COLOR_MAKE(0x4A, 0x52, 0xFF)
 
@@ -79,7 +79,7 @@
 
 #include "../../inc/MarlinConfigPre.h"
 
-#if ENABLED(USES_MKS_WIFI_FUNCTION)
+#if ENABLED(MKS_WIFI_MODULE)
   #include "wifiSerial.h"
   #include "wifi_module.h"
   #include "wifi_upload.h"
@@ -90,12 +90,12 @@
   #include "draw_cloud_bind.h"
 #endif
 
-#define ESP_WIFI					0x02
-#define AP_MODEL					0x01
-#define STA_MODEL					0x02
+#define ESP_WIFI          0x02
+#define AP_MODEL          0x01
+#define STA_MODEL         0x02
 
-#define FILE_SYS_USB	    0
-#define FILE_SYS_SD	      1
+#define FILE_SYS_USB      0
+#define FILE_SYS_SD       1
 
 #define TICK_CYCLE 1
 
@@ -164,9 +164,9 @@
   #define PARA_UI_BACK_BTN_X_SIZE   70
   #define PARA_UI_BACK_BTN_Y_SIZE   40
 
-  #define QRCODE_X 	                20
-  #define QRCODE_Y 	                40
-  #define QRCODE_WIDTH	            160
+  #define QRCODE_X                  20
+  #define QRCODE_Y                  40
+  #define QRCODE_WIDTH              160
 
 #else // ifdef TFT35
 
@@ -181,6 +181,8 @@
 
 extern char public_buf_m[100];
 extern char public_buf_l[30];
+extern uint8_t bmp_public_buf[14 * 1024];
+extern uint8_t public_buf[513];
 
 typedef struct {
   uint32_t spi_flash_flag;
@@ -390,14 +392,12 @@ typedef enum {
   level_pos_x4,
   level_pos_y4,
   level_pos_x5,
-  level_pos_y5
+  level_pos_y5,
   #if HAS_BED_PROBE
-    ,
     x_offset,
     y_offset,
-    z_offset
+    z_offset,
   #endif
-  ,
   load_length,
   load_speed,
   unload_length,

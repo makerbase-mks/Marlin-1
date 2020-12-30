@@ -29,7 +29,6 @@
 #define PRINT_TEXT_RU                   " печать"
 #define EXTRUDE_TEXT_RU                 "экструзия"
 #define LEVELING_TEXT_RU                "уровень"
-#define MLEVELING_TEXT_RU                "углы"
 #define AUTO_LEVELING_TEXT_RU           "aвтоуровень"
 #define SET_TEXT_RU                     "настройки"
 #define MORE_TEXT_RU                    "больше"
@@ -51,8 +50,6 @@
 #define TOOL_MOVE_RU                    "движение"
 #define TOOL_HOME_RU                    "домой"
 #define TOOL_LEVELING_RU                "уровень"
-#define TOOL_MLEVELING_RU                "углы"
-//#define TOOL_MLEVELING_RU                "выровнять\nуглы"    //Malderin
 #define TOOL_AUTO_LEVELING_RU           "aвтоуровень"
 #define TOOL_FILAMENT_RU                "замена"
 #define TOOL_MORE_RU                    "больше"
@@ -102,7 +99,6 @@
 #define MOTOR_OFF_XY_TEXT_RU            "Off-XY"
 #define SHUTDOWN_TEXT_RU                "выключение"
 #define MACHINE_PARA_RU                 "конфиг"
-//#define EEPROM_SETTINGS_RU              "Eeprom Set"
 
 #define U_DISK_TEXT_RU                  "U диск"
 #define SD_CARD_TEXT_RU                 "SD диск"
@@ -114,14 +110,14 @@
 #define WIFI_CONNECTED_TEXT_RU          "подключен"
 #define WIFI_DISCONNECTED_TEXT_RU       "не подключен"
 #define WIFI_EXCEPTION_TEXT_RU          "исключение"
-#define WIFI_RECONNECT_TEXT_RU          "Reconnect"
+#define WIFI_RECONNECT_TEXT_RU          "выбор сети"
 #define CLOUD_TEXT_RU                   "облако"
 #define CLOUD_BIND_RU                   "соединён"
-#define CLOUD_UNBIND_RU                 "не соединён"
-#define CLOUD_UNBINDING_RU              "Unbinding"
-#define CLOUD_DISCONNECTED_RU           "Disconnected"
-#define CLOUD_UNBINDED_RU               "Unbinded"
-#define CLOUD_BINDED_RU                 "Binded"
+#define CLOUD_UNBIND_RU                 "отсоед."
+#define CLOUD_UNBINDING_RU              "отвязано"
+#define CLOUD_DISCONNECTED_RU           "отключено"
+#define CLOUD_UNBINDED_RU               "несвяз."
+#define CLOUD_BINDED_RU                 "связано"
 #define CLOUD_DISABLE_RU                "Disable"
 
 #define FAN_ADD_TEXT_RU                 "добавить"
@@ -138,26 +134,12 @@
 #define FILAMENT_EXT1_TEXT_RU           "экструдер2"
 #define FILAMENT_HEAT_TEXT_RU           "нагрев"
 #define FILAMENT_STOP_TEXT_RU           "стоп"
-//#define FILAMENT_CHANGE_TEXT_RU           "замена"
 #define FILAMENT_TIPS2_TEXT_RU          "T:"
 #define FILAMENT_TIPS3_TEXT_RU          "втянуть..."
 #define FILAMENT_TIPS4_TEXT_RU          "вядавить..."
 #define FILAMENT_TIPS5_TEXT_RU          "Низкая температура, \nнеобходим нагрев"
 #define FILAMENT_TIPS6_TEXT_RU          "завершено"
 
-#if 0
-  #define FILAMENT_REPLAYS_IDLE_TEXT_RU                 "Please click <втянуть> or <выдавить> \nto replace filament!"
-  #define FILAMENT_CHANGE_TEXT_RU                       "Please click <втянуть> or <выдавить>,\nAfter pinter pause."
-  #define FILAMENT_DIALOG_LOAD_HEAT_TIPS_RU             "Heating up the nozzle,please wait..."
-  #define FILAMENT_DIALOG_UNLOAD_HEAT_TIPS_RU           "Heating up the nozzle,please wait..."
-  #define FILAMENT_DIALOG_LOAD_CONFIRM1_TIPS_RU         "Heat completed,please load filament to extruder,and click <да> for start loading."
-  #define FILAMENT_DIALOG_LOAD_CONFIRM2_TIPS_RU         "Please load filament to extruder,and click <да> for start loading."
-  #define FILAMENT_DIALOG_UNLOAD_CONFIRM_TIPS_RU        "Heat completed,please click <да> for start unloading.!"
-  #define FILAMENT_DIALOG_LOADING_TIPS_RU               "Is loading ,please wait!"
-  #define FILAMENT_DIALOG_UNLOADING_TIPS_RU             "Is unloading,please wait!"
-  #define FILAMENT_DIALOG_LOAD_COMPLETE_TIPS_RU         "Load filament completed,click <да> for return!"
-  #define FILAMENT_DIALOG_UNLOAD_COMPLETE_TIPS_RU       "Unload filament completed,click <да> for return!"
-#endif
 #define FILAMENT_CHANGE_TEXT_RU                       "Please click <Load> \nor <unload>,After \npinter pause."
 #define FILAMENT_DIALOG_LOAD_HEAT_TIPS_RU             "Heating up the nozzle,\nplease wait..."
 #define FILAMENT_DIALOG_UNLOAD_HEAT_TIPS_RU           "Heating up the nozzle,\nplease wait..."
@@ -169,14 +151,10 @@
 #define FILAMENT_DIALOG_LOAD_COMPLETE_TIPS_RU         "Load filament completed,\nclick <confirm> for return!"
 #define FILAMENT_DIALOG_UNLOAD_COMPLETE_TIPS_RU       "Unload filament completed,\nclick <confirm> for return!"
 
-
 #define PRE_HEAT_EXT_TEXT_RU                "E"
 #define PRE_HEAT_BED_TEXT_RU                "стол"
 
 #define FILE_LOADING_RU                     "загрузка......"
-#if 0
-  #define NO_FILE_AND_CHECK_RU                "Файлы не найдены! Вставьте SD-карту или диск U!"
-#endif
 #define NO_FILE_AND_CHECK_RU                "нет файла,попробуйте ещё раз!"
 
 #define NO_FILE_RU                          "нет файла!"
@@ -246,7 +224,6 @@
 #define DIALOG_CANCEL_PRINT_RU              "стоп?"
 #define DIALOG_STOP_RU                      "стоп"
 #define DIALOG_REPRINT_FROM_BREAKPOINT_RU   "продолжить?"
-//#define DIALOG_UNBIND_PRINTER_RU          "разрыв?"
 #define DIALOG_ERROR_TIPS1_RU               "ошибка:нет файла, попробуйте ещё раз."
 #define DIALOG_ERROR_TIPS2_RU               "ошибка:сбой передачи. установите скорость \nпередачи данных как на плате управления!"
 #define DIALOG_ERROR_TIPS3_RU               "ошибка: имя файла слишком длинное!"
@@ -275,10 +252,6 @@
 #define EEPROM_SETTINGS_STORE_RU      "Cохранение настроек в EEPROM"
 #define EEPROM_SETTINGS_READ_RU       "Чтение настроек из EEPROM"
 #define EEPROM_SETTINGS_REVERT_RU     "Bосстановить заводские настройки по умолчанию"
-
-// #define EEPROM_STORE_TIPS_RU          "Сохранить настройки в EEPROM?"
-// #define EEPROM_READ_TIPS_RU           "Читать настройки из EEPROM?"
-// #define EEPROM_REVERT_TIPS_RU         "Revert settings to factory defaults?"
 
 #define MORE_CUSTOM1_TEXT_RU  USER_DESC_1
 #define MORE_CUSTOM2_TEXT_RU  USER_DESC_2

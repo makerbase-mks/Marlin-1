@@ -19,12 +19,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-
-/**
- * @file tft_lvgl_configuration.cpp
- * @date    2020-02-21
- */
-
 #include "../../../../inc/MarlinConfigPre.h"
 
 #if HAS_TFT_LVGL_UI
@@ -56,7 +50,7 @@ XPT2046 touch;
   #include "draw_touch_calibration.h"
 #endif
 
-#if ENABLED(USES_MKS_WIFI_FUNCTION)
+#if ENABLED(MKS_WIFI_MODULE)
   #include "wifi_module.h"
 #endif
 
@@ -83,12 +77,10 @@ extern uint8_t sel_id;
 
 extern bool flash_preview_begin, default_preview_flg, gcode_preview_over;
 
-uint8_t bmp_public_buf[14 * 1024];
-
 void SysTick_Callback() {
   lv_tick_inc(1);
   print_time_count();
-  #if ENABLED(USES_MKS_WIFI_FUNCTION)
+  #if ENABLED(MKS_WIFI_MODULE)
     if (tips_disp.timer == TIPS_TIMER_START)
       tips_disp.timer_count++;
   #endif
@@ -115,9 +107,7 @@ void SysTick_Callback() {
 
 void tft_lvgl_init() {
 
-  //uint16_t test_id=0;
   W25QXX.init(SPI_QUARTER_SPEED);
-  //test_id=W25QXX.W25QXX_ReadID();
 
   gCfgItems_init();
   ui_cfg_init();
@@ -126,7 +116,7 @@ void tft_lvgl_init() {
   watchdog_refresh();     // LVGL init takes time
 
   #if MB(MKS_ROBIN_NANO)
-    OUT_WRITE(PB0, LOW);      // HE1
+    OUT_WRITE(PB0, LOW);  // HE1
   #endif
 
   // Init TFT first!
@@ -135,7 +125,6 @@ void tft_lvgl_init() {
 
   watchdog_refresh();     // LVGL init takes time
 
-  //spi_flash_read_test();
   #if ENABLED(SDSUPPORT)
     UpdateAssets();
     watchdog_refresh();   // LVGL init takes time
@@ -203,7 +192,7 @@ void tft_lvgl_init() {
 
   lv_encoder_pin_init();
 
-  #if ENABLED(USES_MKS_WIFI_FUNCTION)
+  #if ENABLED(MKS_WIFI_MODULE)
     mks_wifi_firmware_upddate();
   #endif
   bool ready = true;
@@ -226,12 +215,7 @@ void tft_lvgl_init() {
   #endif
 
   if (ready) {
-    #if ENABLED(TOUCH_SCREEN_CALIBRATION)
-      if (touch_calibration.need_calibration()) lv_draw_touch_calibration_screen();
-      else lv_draw_ready_print();
-    #else
-      lv_draw_ready_print();
-    #endif
+    lv_draw_ready_print();
   }
 
   if (mks_test_flag == 0x1E)
@@ -256,28 +240,21 @@ void lv_fill_rect(lv_coord_t x1, lv_coord_t y1, lv_coord_t x2, lv_coord_t y2, lv
   uint16_t width, height;
   width = x2 - x1 + 1;
   height = y2 - y1 + 1;
-  #if 1//ENABLED(TFT_LVGL_UI_SPI)
-    const uint16 size = (uint16)width;
-    uint16_t buf[size];
-    for(uint16 j = 0; j < size; j++) {
-      buf[j] = bk_color.full; 
-    }
-    SPI_TFT.setWindow((uint16_t)x1, (uint16_t)y1, width, height);
-    for (uint16_t i = 0; i < height; i++) {
-      SPI_TFT.tftio.WriteSequence(buf, width);
-    }
-    W25QXX.init(SPI_QUARTER_SPEED);
+ 
+  SPI_TFT.setWindow((uint16_t)x1, (uint16_t)y1, width, height);
+  #if ENABLED(TFT_LVGL_UI_FSMC)
+    SPI_TFT.tftio.WriteReg(0x002C);
+  #endif
+
+  #ifdef LCD_USE_DMA_FSMC
+    SPI_TFT.tftio.WriteMultiple(bk_color.full, width * height);
   #else
-    // tft_set_cursor(0, 0);
-    // LCD_setWindowArea((uint16_t)x1, (uint16_t)y1, width, height);
-    // LCD_WriteRAM_Prepare();
-    // #ifdef LCD_USE_DMA_FSMC
-    //   LCD_IO_WriteMultiple(bk_color.full, width * height);
-    // #else
-    //   for (uint32_t i = 0; i < width * height; i++) {
-    //     LCD_IO_WriteData(bk_color.full);
-    // }
-    //#endif
+    for (uint32_t i = 0; i < width * height; i++)
+        SPI_TFT.tftio.WriteData(bk_color.full);
+  #endif
+
+  #if ENABLED(TFT_LVGL_UI_SPI)
+    W25QXX.init(SPI_QUARTER_SPEED);
   #endif
 }
 
@@ -316,11 +293,6 @@ bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data) {
 
   tmpTime = millis();
   diffTime = getTickDiff(tmpTime, touch_time1);
-  /*Save the state and save the pressed coordinate*/
-  //data->state = TOUCH_PressValid(last_x, last_y) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
-  //if (data->state == LV_INDEV_STATE_PR)  ADS7843_Rd_Addata((u16 *)&last_x, (u16 *)&last_y);
-  //touchpad_get_xy(&last_x, &last_y);
-  /*Save the pressed coordinates and the state*/
   if (diffTime > 20) {
     if (get_point(&last_x, &last_y)) {
 
@@ -328,7 +300,6 @@ bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data) {
       data->state = LV_INDEV_STATE_PR;
 
       // Set the coordinates (if released use the last-pressed coordinates)
-
       data->point.x = last_x;
       data->point.y = last_y;
 
@@ -415,7 +386,6 @@ lv_fs_res_t spi_flash_tell_cb(lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p
 char *cur_namefff;
 uint32_t sd_read_base_addr = 0,sd_read_addr_offset = 0;
 lv_fs_res_t sd_open_cb (lv_fs_drv_t * drv, void * file_p, const char * path, lv_fs_mode_t mode) {
-  //cur_namefff = strrchr(path, '/');
   char name_buf[100];
   *name_buf = '/';
   strcpy(name_buf + 1, path);
@@ -423,7 +393,7 @@ lv_fs_res_t sd_open_cb (lv_fs_drv_t * drv, void * file_p, const char * path, lv_
   if (temp) strcpy(temp, ".GCO");
   sd_read_base_addr = lv_open_gcode_file((char *)name_buf);
   sd_read_addr_offset = sd_read_base_addr;
-  //if (sd_read_addr_offset == 0) return LV_FS_RES_NOT_EX;
+  if (sd_read_addr_offset == UINT32_MAX) return LV_FS_RES_NOT_EX;
   return LV_FS_RES_OK;
 }
 
@@ -435,21 +405,19 @@ lv_fs_res_t sd_close_cb (lv_fs_drv_t * drv, void * file_p) {
 
 lv_fs_res_t sd_read_cb (lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br) {
   if (btr == 200) {
-    lv_gcode_file_read((uint8_t *)buf);
-    //pic_read_addr_offset += 208;
+    lv_gcode_file_read((uint8_t *)buf, *(uint32_t*)file_p);
     *br = 200;
   }
   else if (btr == 4) {
     uint8_t header_pic[4] = { 0x04, 0x90, 0x81, 0x0C };
     memcpy(buf, header_pic, 4);
-    //pic_read_addr_offset += 4;
     *br = 4;
   }
   return LV_FS_RES_OK;
 }
 
 lv_fs_res_t sd_seek_cb(lv_fs_drv_t * drv, void * file_p, uint32_t pos) {
-  sd_read_addr_offset = sd_read_base_addr + (pos - 4) / 200 * 409;
+  sd_read_addr_offset = sd_read_base_addr + (pos - 4) / 200 * 409; // This is wrong, at least for my file since there are 2 M10086 headers per line
   lv_gcode_file_seek(sd_read_addr_offset);
   return LV_FS_RES_OK;
 }
@@ -490,9 +458,6 @@ void lv_encoder_pin_init() {
 }
 
 #if 1 // HAS_ENCODER_ACTION
-
-  //static const int8_t encoderDirection = 1;
-  //static int16_t enc_Direction;
   void lv_update_encoder() {
     static uint32_t encoder_time1;
     uint32_t tmpTime, diffTime = 0;
@@ -533,10 +498,7 @@ void lv_encoder_pin_init() {
         #define encrot0 0
         #define encrot1 1
         #define encrot2 2
-
-        // Manage encoder rotation
-        //#define ENCODER_SPIN(_E1, _E2) switch (lastEncoderBits) { case _E1: enc_Direction += encoderDirection; break; case _E2: enc_Direction -= encoderDirection; }
-
+        
         uint8_t enc = 0;
         if (buttons & EN_A) enc |= B01;
         if (buttons & EN_B) enc |= B10;
@@ -561,7 +523,6 @@ void lv_encoder_pin_init() {
         const uint8_t enc_c = (buttons & EN_C) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
         if (enc_c != last_button_state) {
           state = enc_c ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
-
           last_button_state = enc_c;
         }
 
